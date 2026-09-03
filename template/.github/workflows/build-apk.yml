@@ -28,7 +28,7 @@ jobs:
       - name: Setup Gradle Wrapper
         run: gradle wrapper --gradle-version 8.5
 
-      - name: Setup Root Index.html and Manifest
+      - name: Setup Assets, Clean Manifest & Enforce Native Theme
         run: |
           mkdir -p app/src/main/assets
           mkdir -p app/src/main/res/values
@@ -40,9 +40,8 @@ jobs:
             echo '<html><body><h1>Welcome to AutoRelease WebView</h1></body></html>' > app/src/main/assets/index.html
           fi
 
-          if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
-            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault.Light.DarkActionBar"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
-          fi
+          # Forcefully replace or create AndroidManifest with a clean native theme avoiding missing appcompat errors
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><application android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@android:style/Theme.DeviceDefault.Light.DarkActionBar"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
 
           if [ ! -f "app/src/main/res/values/strings.xml" ]; then
             echo '<resources><string name="app_name">WebViewApp</string></resources>' > app/src/main/res/values/strings.xml
