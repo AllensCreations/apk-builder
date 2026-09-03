@@ -5,48 +5,48 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-and-release:
+  calculate-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    outputs:
+      version-code: ${{ steps.version.outputs.v_code }}
+      version-name: ${{ steps.version.outputs.v_name }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.5
-
-      - name: Calculate Version from Commits
+      - id: version
         run: |
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          echo "VERSION_CODE=$COMMIT_COUNT" >> $GITHUB_ENV
-          # Auto map commits to a version name like 1.0.X
+          echo "v_code=$COMMIT_COUNT" >> $GITHUB_OUTPUT
           MINOR=$((COMMIT_COUNT % 100))
-          echo "VERSION_NAME=1.0.$MINOR" >> $GITHUB_ENV
+          echo "v_name=1.0.$MINOR" >> $GITHUB_OUTPUT
 
-      - name: Update Version in build.gradle
-        run: |
-          sed -i "s/versionCode [0-9]*/versionCode ${{ env.VERSION_CODE }}/g" app/build.gradle
-          sed -i 's/versionName "[^"]*"/versionName "${{ env.VERSION_NAME }}"/g' app/build.gradle
+  call-build:
+    needs: calculate-version
+    uses: AllensCreations/apk-builder/.github/workflows/build-apk.yml@main
+    with:
+      version-code: ${{ needs.calculate-version.outputs.version-code }}
+      version-name: ${{ needs.calculate-version.outputs.version-name }}
 
-      - name: Build APK (Debug/Release)
-        run: ./gradlew assembleDebug
+  release:
+    needs: [calculate-version, call-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Built Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-apk
+          path: ./apk
 
       - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ env.VERSION_CODE }}
-          name: Release v1.0.${{ env.VERSION_CODE }}
-          files: app/build/outputs/apk/debug/*.apk
+          tag_name: v1.0.${{ needs.calculate-version.outputs.version-code }}
+          name: Release v1.0.${{ needs.calculate-version.outputs.version-code }}
+          files: ./apk/*.apk
           body: "Automated build generated via AllensCreations/apk-builder framework."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
