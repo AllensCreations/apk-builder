@@ -1,0 +1,113 @@
+name: Build and Release Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Auto-Increment Version (+0.1)
+        id: versioning
+        run: |
+          set -e
+          GRADLE_FILE="android/android-tcrp/app/build.gradle"
+          if [ ! -f "$GRADLE_FILE" ]; then
+            GRADLE_FILE="app/build.gradle"
+          }
+          
+          CURRENT_VERSION=$(grep 'versionName' $GRADLE_FILE | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          CURRENT_CODE=$(grep 'versionCode' $GRADLE_FILE | head -1 | tr -dc '0-9')
+          
+          NEW_CODE=$((CURRENT_CODE + 1))
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          NEW_MINOR=$((MINOR + 1))
+          NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+
+          echo "Bumping version: $CURRENT_VERSION (Code $CURRENT_CODE) -> $NEW_VERSION (Code $NEW_CODE)"
+
+          sed -i "s/versionCode .*/versionCode $NEW_CODE/" $GRADLE_FILE
+          sed -i "s/versionName .*/versionName \"$NEW_VERSION\"/" $GRADLE_FILE
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_code=$NEW_CODE" >> $GITHUB_OUTPUT
+
+      - name: Clean Invalid Gradle Overrides & SDK Paths
+        run: |
+          find . -name "local.properties" -delete || true
+          find . -name "gradle.properties" -exec sed -i '/aapt2FromMavenOverride/d' {} + || true
+
+      - name: Grant Execute Permission to Gradle
+        run: |
+          if [ -f "android/android-tcrp/gradlew" ]; then
+            chmod +x android/android-tcrp/gradlew
+          elif [ -f "gradlew" ]; then
+            chmod +x gradlew
+          fi
+
+      - name: Build Android APK with Gradle
+        run: |
+          if [ -d "android/android-tcrp" ]; then
+            cd android/android-tcrp
+            ./gradlew assembleRelease || ./gradlew assembleDebug
+          else
+            ./gradlew assembleRelease || ./gradlew assembleDebug
+          fi
+
+      - name: Stage APK Files
+        run: |
+          mkdir -p public android
+          APK_PATH=$(find . -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: No APK file generated!" && exit 1
+          fi
+          echo "Found compiled APK at $APK_PATH"
+          cp "$APK_PATH" public/app-release.apk
+          cp "$APK_PATH" "android/app-v${{ steps.versioning.outputs.new_version }}.apk"
+
+      - name: Commit and Push to Appversion Branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git checkout -B Appversion || git checkout --orphan Appversion
+          git add -f public/app-release.apk android/ || true
+          git commit -m "chore(release): bump version to v${{ steps.versioning.outputs.new_version }} (Build ${{ steps.versioning.outputs.new_code }}) [skip ci]" || true
+          git push origin Appversion --force || true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.versioning.outputs.new_version }}"
+          name: "App v${{ steps.versioning.outputs.new_version }} (Build ${{ steps.versioning.outputs.new_code }})"
+          body: |
+            ## 🎁 Automated Release v${{ steps.versioning.outputs.new_version }}
+            - **Build Code**: `${{ steps.versioning.outputs.new_code }}`
+            - **Branch**: `Appversion`
+          files: |
+            public/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
