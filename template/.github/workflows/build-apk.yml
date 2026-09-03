@@ -34,7 +34,6 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi
 
-          # Locate index.html from repo root and copy into Android assets
           if [ -f "index.html" ]; then
             cp index.html app/src/main/assets/index.html
           elif [ ! -f "app/src/main/assets/index.html" ]; then
