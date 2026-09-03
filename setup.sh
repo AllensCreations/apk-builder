@@ -16,7 +16,7 @@ if [ -z "$repos" ]; then
     exit 1
 fi
 
-echo "Select a target repository to inject Gradle and Auto-Release workflow:"
+echo "Select a target repository to inject Gradle and Workflow tester:"
 select repo in $repos "Cancel"; do
     if [ "$repo" = "Cancel" ] || [ -z "$repo" ]; then
         echo "Exiting."
@@ -42,9 +42,51 @@ if [ -z "$(git config --global user.name)" ]; then
     git config user.email "bot@apkbuilder.local"
 fi
 
-echo "Injecting remote template files and workflow..."
-mkdir -p .github/workflows
-cp -R ../central_builder/template/* ./
+echo "----------------------------------------"
+echo "Running Pre-Flight Tester on Target Repo..."
+echo "----------------------------------------"
+
+MISSING_ITEMS=0
+
+# Check for app/ directory structure
+if [ ! -d "app" ]; then
+    echo "[!] Missing 'app' directory detected. Creating structure..."
+    mkdir -p app/src/main/res/values
+    MISSING_ITEMS=$((MISSING_ITEMS + 1))
+fi
+
+# Check for main build.gradle files
+if [ ! -f "build.gradle" ] && [ ! -f "build.gradle.kts" ]; then
+    echo "[!] Missing root build.gradle detected. Fixing..."
+    cp ../central_builder/template/build.gradle ./build.gradle
+    MISSING_ITEMS=$((MISSING_ITEMS + 1))
+fi
+
+if [ ! -f "app/build.gradle" ]; then
+    echo "[!] Missing app/build.gradle detected. Fixing..."
+    mkdir -p app
+    cp ../central_builder/template/app/build.gradle ./app/build.gradle
+    MISSING_ITEMS=$((MISSING_ITEMS + 1))
+fi
+
+# Check for settings.gradle
+if [ ! -f "settings.gradle" ]; then
+    echo "[!] Missing settings.gradle detected. Fixing..."
+    cp ../central_builder/template/settings.gradle ./settings.gradle
+    MISSING_ITEMS=$((MISSING_ITEMS + 1))
+fi
+
+# Check for GitHub Workflow folder
+if [ ! -d ".github/workflows" ]; then
+    echo "[!] Missing workflows directory detected. Creating..."
+    mkdir -p .github/workflows
+    MISSING_ITEMS=$((MISSING_ITEMS + 1))
+fi
+
+echo "Pre-Flight check complete. Resolved missing items: $MISSING_ITEMS"
+echo "----------------------------------------"
+
+echo "Injecting workflows and template files from central builder..."
 cp -R ../central_builder/template/.github/workflows/* .github/workflows/
 
 if [ -f "gradlew" ]; then
@@ -52,12 +94,13 @@ if [ -f "gradlew" ]; then
 fi
 
 git add .
-git commit -m "Add remote Gradle files and automated GitHub Release workflow"
+git status
+git commit -m "Pre-flight check: Auto-resolved missing configurations and added CI workflow"
 
 BRANCH=$(git branch --show-current)
 git push origin "$BRANCH"
 
-echo "Successfully pushed Gradle setup and workflows to $repo!"
+echo "Successfully validated and synchronized $repo!"
 
 cd /
 rm -rf "$WORK_DIR"
