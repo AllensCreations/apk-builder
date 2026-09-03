@@ -28,6 +28,13 @@ jobs:
       - name: Setup Gradle Wrapper
         run: gradle wrapper --gradle-version 8.5
 
+      - name: Ensure Android Manifest Exists
+        run: |
+          mkdir -p app/src/main
+          if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
+            echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="App"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
+          fi
+
       - name: Update Version in build.gradle
         run: |
           if [ -f "app/build.gradle" ]; then
