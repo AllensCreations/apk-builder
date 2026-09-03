@@ -60,9 +60,23 @@ jobs:
             sed -i 's/versionName "[^"]*"/versionName "${{ inputs.version-name }}"/g' app/build.gradle
           fi
 
-      - name: Build APK with Diagnostics
+      - name: Build APK with Detailed Failure Diagnostics Logger
         run: |
-          ./gradlew assembleDebug -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8" --stacktrace || exit 1
+          ./gradlew assembleDebug -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8" --stacktrace --warning-mode all || {
+            echo "===================================================="
+            echo "❌ BUILD FAILED: DETAILED ERROR DIAGNOSTICS LOG"
+            echo "===================================================="
+            
+            if [ -f "app/build/reports/problems/problems-report.html" ]; then
+              echo "📄 Gradle problems report generated at app/build/reports/problems/problems-report.html"
+            fi
+            
+            echo "--- Scanning for Error Logs / Stack Traces ---"
+            find . -name "*.log" -o -name "hs_err_pid*.log" -exec echo "Found log file: {}" \; -exec cat {} \; || true
+            
+            echo "===================================================="
+            exit 1
+          }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
