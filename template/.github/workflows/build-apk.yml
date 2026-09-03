@@ -55,17 +55,12 @@ jobs:
             sed -i 's/versionName "[^"]*"/versionName "${{ inputs.version-name }}"/g' app/build.gradle
           fi
 
-      - name: Build APK (Debug with Memory Optimization & Logger)
+      - name: Build APK with Logger & Error Diagnostics
         run: |
-          export org.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
-          ./gradlew assembleDebug --stacktrace --info || {
+          ./gradlew assembleDebug -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8" --stacktrace --info || {
             echo "========================================="
             echo "[!] BUILD FAILED: Printing Error Diagnostics"
             echo "========================================="
-            if [ -f "build/reports/problems/problems-report.html" ]; then
-              echo "Gradle problems report found."
-            fi
-            find . -name "hs_err_pid*.log" -exec cat {} + || true
             exit 1
           }
 
