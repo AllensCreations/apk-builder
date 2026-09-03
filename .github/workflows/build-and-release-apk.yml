@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN 
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -36,7 +36,7 @@ jobs:
           GRADLE_FILE="android/android-tcrp/app/build.gradle"
           if [ ! -f "$GRADLE_FILE" ]; then
             GRADLE_FILE="app/build.gradle"
-          }
+          
           
           CURRENT_VERSION=$(grep 'versionName' $GRADLE_FILE | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
           CURRENT_CODE=$(grep 'versionCode' $GRADLE_FILE | head -1 | tr -dc '0-9')
@@ -45,7 +45,7 @@ jobs:
           MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
           MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
           NEW_MINOR=$((MINOR + 1))
-          NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+          NEW_VERSION="${MAJOR.${NEW_MINOR.0"
 
           echo "Bumping version: $CURRENT_VERSION (Code $CURRENT_CODE) -> $NEW_VERSION (Code $NEW_CODE)"
 
@@ -58,7 +58,7 @@ jobs:
       - name: Clean Invalid Gradle Overrides & SDK Paths
         run: |
           find . -name "local.properties" -delete || true
-          find . -name "gradle.properties" -exec sed -i '/aapt2FromMavenOverride/d' {} + || true
+          find . -name "gradle.properties" -exec sed -i '/aapt2FromMavenOverride/d' { + || true
 
       - name: Grant Execute Permission to Gradle
         run: |
@@ -86,7 +86,7 @@ jobs:
           fi
           echo "Found compiled APK at $APK_PATH"
           cp "$APK_PATH" public/app-release.apk
-          cp "$APK_PATH" "android/app-v${{ steps.versioning.outputs.new_version }}.apk"
+          cp "$APK_PATH" "android/app-v${{ steps.versioning.outputs.new_version .apk"
 
       - name: Commit and Push to Appversion Branch
         run: |
@@ -95,19 +95,19 @@ jobs:
           
           git checkout -B Appversion || git checkout --orphan Appversion
           git add -f public/app-release.apk android/ || true
-          git commit -m "chore(release): bump version to v${{ steps.versioning.outputs.new_version }} (Build ${{ steps.versioning.outputs.new_code }}) [skip ci]" || true
+          git commit -m "chore(release): bump version to v${{ steps.versioning.outputs.new_version  (Build ${{ steps.versioning.outputs.new_code ) [skip ci]" || true
           git push origin Appversion --force || true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v${{ steps.versioning.outputs.new_version }}"
-          name: "App v${{ steps.versioning.outputs.new_version }} (Build ${{ steps.versioning.outputs.new_code }})"
+          tag_name: "v${{ steps.versioning.outputs.new_version "
+          name: "App v${{ steps.versioning.outputs.new_version  (Build ${{ steps.versioning.outputs.new_code )"
           body: |
-            ## 🎁 Automated Release v${{ steps.versioning.outputs.new_version }}
-            - **Build Code**: `${{ steps.versioning.outputs.new_code }}`
+            ## 🎁 Automated Release v${{ steps.versioning.outputs.new_version 
+            - **Build Code**: `${{ steps.versioning.outputs.new_code `
             - **Branch**: `Appversion`
           files: |
             public/app-release.apk
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN 

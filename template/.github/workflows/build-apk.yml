@@ -33,21 +33,17 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi
           
-          # Create AndroidManifest if missing
           if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
             echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@style/Theme.AppCompat.Light.DarkActionBar"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
           fi
 
-          # Create strings.xml if app_name string is missing
           if [ ! -f "app/src/main/res/values/strings.xml" ]; then
             echo '<resources><string name="app_name">AutoApp</string></resources>' > app/src/main/res/values/strings.xml
           elif ! grep -q "app_name" app/src/main/res/values/strings.xml; then
             sed -i '/<resources>/a <string name="app_name">AutoApp<\/string>' app/src/main/res/values/strings.xml
           fi
           
-          # Create a dummy icon placeholder to satisfy AAPT requirements if missing
           if [ ! -f "app/src/main/res/mipmap-hdpi/ic_launcher.png" ]; then
-            # Generates a tiny blank 1x1 transparent png fallback if icon assets are totally absent
             echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 -d > app/src/main/res/mipmap-hdpi/ic_launcher.png
             cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
           fi
@@ -59,8 +55,19 @@ jobs:
             sed -i 's/versionName "[^"]*"/versionName "${{ inputs.version-name }}"/g' app/build.gradle
           fi
 
-      - name: Build APK (Debug)
-        run: ./gradlew assembleDebug
+      - name: Build APK (Debug with Memory Optimization & Logger)
+        run: |
+          export org.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
+          ./gradlew assembleDebug --stacktrace --info || {
+            echo "========================================="
+            echo "[!] BUILD FAILED: Printing Error Diagnostics"
+            echo "========================================="
+            if [ -f "build/reports/problems/problems-report.html" ]; then
+              echo "Gradle problems report found."
+            fi
+            find . -name "hs_err_pid*.log" -exec cat {} + || true
+            exit 1
+          }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
