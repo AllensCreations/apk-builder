@@ -28,17 +28,17 @@ jobs:
       - name: Setup Gradle Wrapper
         run: gradle wrapper --gradle-version 8.5
 
-      - name: Setup WebView Assets and Manifest
+      - name: Setup Root Index.html and Manifest
         run: |
-          mkdir -p app/src/main/assets/views
+          mkdir -p app/src/main/assets
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi
 
-          # If views folder exists in repository root, copy contents to Android assets
-          if [ -d "views" ]; then
-            cp -r views/* app/src/main/assets/views/
-          elif [ ! -f "app/src/main/assets/views/index.html" ]; then
-            echo '<html><body><h1>Welcome to AutoRelease WebView</h1></body></html>' > app/src/main/assets/views/index.html
+          # Locate index.html from repo root and copy into Android assets
+          if [ -f "index.html" ]; then
+            cp index.html app/src/main/assets/index.html
+          elif [ ! -f "app/src/main/assets/index.html" ]; then
+            echo '<html><body><h1>Welcome to AutoRelease WebView</h1></body></html>' > app/src/main/assets/index.html
           fi
 
           if [ ! -f "app/src/main/AndroidManifest.xml" ]; then

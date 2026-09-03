@@ -11,8 +11,8 @@ class MainActivity : AppCompatActivity() {
         val webView = WebView(this)
         webView.settings.javaScriptEnabled = true
         webView.webViewClient = WebViewClient()
-        // Loads index.html from assets/views/ or views/ directory
-        webView.loadUrl("file:///android_asset/views/index.html")
+        // Loads index.html directly from root assets
+        webView.loadUrl("file:///android_asset/index.html")
         setContentView(webView)
     }
 }
